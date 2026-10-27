@@ -21,7 +21,15 @@ public class GlobalExceptionHandler {
             BadCredentialsException ex
     ) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                // Bad credentials sinon e.getMessage()
+                // Bad credentials sinon ex.getMessage()
                 .body(Map.of("message", "error"));
     }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNotFound(ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                // Not found sinon ex.getMessage()
+                .body(Map.of("message", "error"));
+    }
+
 }

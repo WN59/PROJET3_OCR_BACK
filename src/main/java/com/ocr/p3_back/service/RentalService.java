@@ -5,7 +5,7 @@ import com.ocr.p3_back.dto.RentalsResponse;
 import com.ocr.p3_back.entity.Rental;
 import com.ocr.p3_back.repository.RentalRepository;
 import org.springframework.stereotype.Service;
-
+import com.ocr.p3_back.exception.ResourceNotFoundException;
 import java.util.List;
 
 @Service
@@ -24,6 +24,14 @@ public class RentalService {
                 .toList();
         return new RentalsResponse(rentals);
     }
+
+    public RentalResponse findById(Integer id) {
+        Rental rental = rentalRepository.findById(id)
+                // Not found sinon ex.getMessage()
+                .orElseThrow(() -> new ResourceNotFoundException("error"));
+        return toResponse(rental);
+    }
+
 
     private RentalResponse toResponse(Rental rental) {
         return new RentalResponse(
