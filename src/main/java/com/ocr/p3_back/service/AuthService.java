@@ -3,6 +3,7 @@ package com.ocr.p3_back.service;
 import com.ocr.p3_back.dto.AuthResponse;
 import com.ocr.p3_back.dto.LoginRequest;
 import com.ocr.p3_back.dto.RegisterRequest;
+import com.ocr.p3_back.dto.UserResponse;
 import com.ocr.p3_back.entity.User;
 import com.ocr.p3_back.repository.UserRepository;
 import com.ocr.p3_back.security.JwtService;
@@ -56,5 +57,18 @@ public class AuthService {
 
         String token = jwtService.generateToken(user.getEmail());
         return new AuthResponse(token);
+    }
+
+    public UserResponse me(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("error"));
+    
+        return new UserResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getCreatedAt(),
+                user.getUpdatedAt()
+        );
     }
 }
