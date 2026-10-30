@@ -2,6 +2,9 @@ package com.ocr.p3_back.dto;
 
 import java.util.List;
 
+/**
+ * Wrapper de liste : {@code { "rentals": [ ... ] }}.
+ */
 public class RentalsResponse {
 
     private List<RentalResponse> rentals;

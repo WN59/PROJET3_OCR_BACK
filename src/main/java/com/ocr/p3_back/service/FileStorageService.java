@@ -10,12 +10,22 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
 
+/**
+ * Stocke les fichiers uploadés sur le disque local
+ * et renvoie l'URL publique à enregistrer en BDD.
+ */
 @Service
 public class FileStorageService {
 
     private final Path uploadPath;
     private final String baseUrl;
 
+    /**
+     * Prépare le dossier d'upload au démarrage.
+     *
+     * @param uploadDir chemin du dossier (ex. uploads)
+     * @param baseUrl   préfixe d'URL publique (ex. http://localhost:3001/uploads)
+     */
     public FileStorageService(
             @Value("${app.upload.dir}") String uploadDir,
             @Value("${app.upload.base-url}") String baseUrl
@@ -25,6 +35,12 @@ public class FileStorageService {
         Files.createDirectories(this.uploadPath);
     }
 
+    /**
+     * Sauve le fichier sous un nom UUID et renvoie son URL.
+     *
+     * @param file fichier reçu (multipart)
+     * @return URL accessible via {@code /uploads/...}
+     */
     public String store(MultipartFile file) {
         try {
             String original = file.getOriginalFilename() != null ? file.getOriginalFilename() : "image.jpg";

@@ -3,6 +3,10 @@ package com.ocr.p3_back.dto;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * Profil utilisateur renvoyé au front (sans password).
+ * Dates en snake_case ({@code created_at}, {@code updated_at}).
+ */
 public class UserResponse {
 
     private Integer id;

@@ -11,6 +11,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.security.authentication.BadCredentialsException;
 
+/**
+ * Logique métier de l'authentification :
+ * inscription, connexion (BCrypt) et profil {@code /me}.
+ */
 @Service
 public class AuthService {
 
@@ -18,6 +22,11 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
+    /**
+     * @param userRepository  accès table USERS
+     * @param passwordEncoder encodeur BCrypt
+     * @param jwtService      création des tokens
+     */
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
@@ -28,6 +37,13 @@ public class AuthService {
         this.jwtService = jwtService;
     }
 
+    /**
+     * Inscrit un nouvel utilisateur et renvoie un JWT.
+     *
+     * @param request données d'inscription
+     * @return token JWT
+     * @throws BadCredentialsException si l'email existe déjà
+     */
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             // Email already exists
@@ -45,6 +61,13 @@ public class AuthService {
         return new AuthResponse(token);
     }
 
+    /**
+     * Vérifie email + mot de passe et renvoie un JWT.
+     *
+     * @param request identifiants
+     * @return token JWT
+     * @throws BadCredentialsException si email ou mot de passe incorrect
+     */
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 // Invalid email
@@ -59,6 +82,12 @@ public class AuthService {
         return new AuthResponse(token);
     }
 
+    /**
+     * Charge le profil de l'utilisateur connecté (sans password).
+     *
+     * @param email email issu du JWT
+     * @return DTO profil
+     */
     public UserResponse me(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("error"));

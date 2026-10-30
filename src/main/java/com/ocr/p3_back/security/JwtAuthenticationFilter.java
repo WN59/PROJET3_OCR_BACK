@@ -14,15 +14,31 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Filtre exécuté à chaque requête.
+ * Lit {@code Authorization: Bearer ...}, valide le JWT
+ * et place l'email dans le SecurityContext si le token est bon.
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
 
+    /**
+     * @param jwtService service de lecture / validation des tokens
+     */
     public JwtAuthenticationFilter(JwtService jwtService) {
         this.jwtService = jwtService;
     }
 
+    /**
+     * Si un Bearer valide est présent, authentifie la requête.
+     * Sinon laisse passer sans utilisateur (les routes protégées seront refusées plus loin).
+     *
+     * @param request     requête HTTP entrante
+     * @param response    réponse HTTP
+     * @param filterChain suite des filtres / controller
+     */
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,

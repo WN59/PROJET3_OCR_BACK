@@ -9,6 +9,10 @@ import jakarta.persistence.Column;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Entité JPA de la table {@code RENTALS}.
+ * {@code picture} = URL de l'image ; {@code ownerId} = id du propriétaire.
+ */
 @Entity
 @Table(name = "RENTALS")
 public class Rental {

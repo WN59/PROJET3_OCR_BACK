@@ -11,6 +11,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
+/**
+ * Logique métier des messages liés à une location.
+ */
 @Service
 public class MessageService {
 
@@ -18,6 +21,11 @@ public class MessageService {
     private final UserRepository userRepository;
     private final RentalRepository rentalRepository;
 
+    /**
+     * @param messageRepository accès table MESSAGES
+     * @param userRepository    pour retrouver l'auteur via le JWT
+     * @param rentalRepository  pour vérifier que la rental existe
+     */
     public MessageService(
             MessageRepository messageRepository,
             UserRepository userRepository,
@@ -28,6 +36,14 @@ public class MessageService {
         this.rentalRepository = rentalRepository;
     }
 
+    /**
+     * Enregistre un message. L'auteur vient du JWT, pas du body client.
+     *
+     * @param rentalId    id de la location concernée
+     * @param messageText contenu du message
+     * @param email       email du JWT
+     * @return message Mockoon de succès
+     */
     public ApiResponseMessage create(Integer rentalId, String messageText, String email) {
         // 1) Qui écrit ? (JWT)
         User user = userRepository.findByEmail(email)

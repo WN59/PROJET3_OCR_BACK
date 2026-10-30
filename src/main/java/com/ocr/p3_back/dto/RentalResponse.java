@@ -4,6 +4,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Une location au format JSON attendu par le front
+ * ({@code owner_id}, {@code created_at}, {@code updated_at}).
+ */
 public class RentalResponse {
 
     private Integer id;

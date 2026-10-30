@@ -15,6 +15,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Logique métier des locations : liste, détail, création (avec image) et mise à jour.
+ */
 @Service
 public class RentalService {
 
@@ -22,6 +25,11 @@ public class RentalService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
 
+    /**
+     * @param rentalRepository   accès table RENTALS
+     * @param userRepository     pour retrouver le propriétaire via l'email JWT
+     * @param fileStorageService sauvegarde des images
+     */
     public RentalService(
             RentalRepository rentalRepository,
             UserRepository userRepository,
@@ -32,6 +40,11 @@ public class RentalService {
         this.fileStorageService = fileStorageService;
     }
 
+    /**
+     * Liste toutes les locations au format attendu par le front.
+     *
+     * @return wrapper {@code { "rentals": [...] }}
+     */
     public RentalsResponse findAll() {
         List<RentalResponse> rentals = rentalRepository.findAll()
                 .stream()
@@ -40,12 +53,30 @@ public class RentalService {
         return new RentalsResponse(rentals);
     }
 
+    /**
+     * Retrouve une location par id.
+     *
+     * @param id identifiant
+     * @return DTO location
+     * @throws ResourceNotFoundException si absente
+     */
     public RentalResponse findById(Integer id) {
         Rental rental = rentalRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Rental not found"));
         return toResponse(rental);
     }
 
+    /**
+     * Crée une location : owner depuis le JWT, image stockée sur disque.
+     *
+     * @param name        nom
+     * @param surface     surface (texte form-data → BigDecimal)
+     * @param price       prix
+     * @param picture     fichier image
+     * @param description description
+     * @param email       email du JWT
+     * @return message Mockoon de succès
+     */
     public ApiResponseMessage create(
             String name,
             String surface,
@@ -78,7 +109,17 @@ public class RentalService {
         return new ApiResponseMessage("Rental created !");
     }
 
-     public ApiResponseMessage update(
+    /**
+     * Met à jour les infos texte d'une location (sans changer l'image ni l'owner).
+     *
+     * @param id          identifiant
+     * @param name        nom
+     * @param surface     surface
+     * @param price       prix
+     * @param description description
+     * @return message Mockoon de succès
+     */
+    public ApiResponseMessage update(
             Integer id,
             String name,
             String surface,
@@ -99,6 +140,12 @@ public class RentalService {
         return new ApiResponseMessage("Rental updated !");
     }
 
+    /**
+     * Convertit une Entity Rental en DTO JSON pour le front.
+     *
+     * @param rental entité BDD
+     * @return DTO sans détails techniques JPA
+     */
     private RentalResponse toResponse(Rental rental) {
         return new RentalResponse(
                 rental.getId(),

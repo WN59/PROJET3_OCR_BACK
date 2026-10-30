@@ -8,6 +8,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Column;
 import java.time.LocalDateTime;
 
+/**
+ * Entité JPA de la table {@code MESSAGES}.
+ * Lie un utilisateur (auteur) à une location via leurs ids.
+ */
 @Entity
 @Table(name = "MESSAGES")
 public class Message {
