@@ -3,29 +3,45 @@
 API REST Java / Spring Boot du projet **ChaTop** (OpenClassRooms).  
 Elle remplace **Mockoon** pour parler avec le front **Angular** (locations / rentals).
 
----
+> **Important** : le front Angular ne doit pas être modifié.  
+> Cette API respecte le même contrat HTTP (URLs, JSON, codes de réponse).
 
 ## État actuel du projet
 
-Fonctionnel aujourd’hui :
+### Routes opérationnelles
 
-| Méthode | URL | Auth | Rôle |
-|---------|-----|------|------|
-| `POST` | `/api/auth/register` | Non | Créer un compte → renvoie un JWT |
-| `POST` | `/api/auth/login` | Non | Se connecter → renvoie un JWT |
-| `GET` | `/api/auth/me` | Oui (Bearer JWT) | Profil de l’utilisateur connecté |
+| Méthode | URL | Auth | Body | Réponse |
+|---------|-----|------|------|---------|
+| `POST` | `/api/auth/register` | Non | JSON `{ name, email, password }` | `{ "token": "..." }` |
+| `POST` | `/api/auth/login` | Non | JSON `{ email, password }` | `{ "token": "..." }` |
+| `GET` | `/api/auth/me` | Oui | — | profil user (sans password) |
+| `GET` | `/api/rentals` | Oui | — | `{ "rentals": [ ... ] }` |
+| `GET` | `/api/rentals/{id}` | Oui | — | un rental |
+| `POST` | `/api/rentals` | Oui | **multipart/form-data** + image | `{ "message": "Rental created !" }` |
+| `GET` | `/api/user/{id}` | Oui | — | même forme que `/auth/me` |
+
+### Routes restantes (à venir)
+
+| Méthode | URL | Auth | Notes |
+|---------|-----|------|--------|
+| `PUT` | `/api/rentals/{id}` | Oui | multipart **sans** `picture` → `"Rental updated !"` |
+| `POST` | `/api/messages` | Oui | JSON `{ rental_id, user_id, message }` |
+
+### Accès public (sans JWT)
+
+- `/api/auth/register`, `/api/auth/login`
+- `/uploads/**` (fichiers images uploadés)
+- Swagger plus tard : `/swagger-ui/**`, `/v3/api-docs/**`
 
 ---
 
 ## Prérequis
 
-Avant de lancer l’API, installe / démarre :
-
 1. **JDK 21** (Java)
-2. **Maven** (ou utilise le wrapper `mvnw` déjà dans le projet)
+2. **Maven** (ou le wrapper `mvnw` du projet)
 3. **MySQL** via **XAMPP** (ou équivalent)
 4. (Optionnel) **Postman** pour tester
-5. (Optionnel) Front Angular du projet, port `4200`
+5. (Optionnel) Front Angular, port `4200`
 
 ---
 
@@ -33,18 +49,18 @@ Avant de lancer l’API, installe / démarre :
 
 ### 1. Cloner / ouvrir le projet
 
-Ouvre le dossier `PROJET3_OCR_BACK` dans votre IDE.
+Ouvre le dossier `PROJET3_OCR_BACK` dans ton IDE.
 
 ### 2. Créer la base MySQL
 
 1. Démarre **MySQL** dans XAMPP  
 2. Crée une base, par exemple `chatop_db`  
-3. Exécute le script SQL de référence (tables `USERS`, `RENTALS`, `MESSAGES`) :
+3. Exécute le script SQL de référence (tables `USERS`, `RENTALS`, `MESSAGES`) :  
+   `ressources/sql/script.sql` (dossier local / hors Git selon ta config)
 
+### 3. Créer `env.properties`
 
-### 3. Créer le fichier des secrets `env.properties`
-
-À la **racine** du projet (même niveau que `pom.xml`), copie `env.properties.example` vers **`env.properties`**, puis renseigne tes valeurs :
+À la **racine** du projet, copie `env.properties.example` → **`env.properties`** :
 
 ```properties
 DB_URL=jdbc:mysql://localhost:3306/chatop_db
@@ -52,51 +68,79 @@ DB_USER=ton_utilisateur_mysql
 DB_PASSWORD=ton_mot_de_passe_mysql
 JWT_SECRET=une-cle-secrete-d-au-moins-32-caracteres
 JWT_EXPIRATION_MS=3600000
+UPLOAD_DIR=uploads
+UPLOAD_BASE_URL=http://localhost:3001/uploads
 ```
 
 | Variable | Signification |
 |----------|----------------|
 | `DB_URL` | Adresse JDBC de ta base |
 | `DB_USER` / `DB_PASSWORD` | Identifiants MySQL |
-| `JWT_SECRET` | Clé pour signer les tokens (ne jamais la committer) |
+| `JWT_SECRET` | Clé pour signer les tokens (**jamais** committer) |
 | `JWT_EXPIRATION_MS` | Durée de vie du token en ms (`3600000` = 1 h) |
+| `UPLOAD_DIR` | Dossier local où sont sauvés les fichiers (créé auto) |
+| `UPLOAD_BASE_URL` | Préfixe d’URL publique des images |
 
-Ce fichier est dans le **`.gitignore`** : il ne part pas sur Git.
+`env.properties` est dans le **`.gitignore`**.
 
 ### 4. Lancer l’API
 
-**Depuis l’IDE** : lancer la classe `P3BackApplication` (bouton Run).
+**IDE** : Run sur `P3BackApplication`.
 
-**Ou en terminal** (à la racine du projet) :
+**Terminal** :
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-Sous Windows (Invite de commandes) :
+Windows :
 
 ```bash
 mvnw.cmd spring-boot:run
 ```
 
-### 5. Vérifier que ça tourne
+Tu dois voir : MySQL OK, `Tomcat started on port 3001`, `Started P3BackApplication`.
 
-Dans la console, tu dois voir notamment :
+API : **http://localhost:3001**
 
-- connexion MySQL OK (`HikariPool` started)
-- `Tomcat started on port 3001`
-- `Started P3BackApplication`
+---
 
-L’API écoute sur : **http://localhost:3001**
+## Upload d’images (comment ça marche)
+
+Sur `POST /api/rentals`, le front envoie un fichier `picture` en **multipart**.
+
+```text
+Postman / Angular (form-data + fichier)
+        ↓
+RentalController
+        ↓
+RentalService
+   ├─ retrouve le user connecté (JWT) → owner_id
+   ├─ FileStorageService.store(picture)
+   │     → fichier sauvé dans uploads/xxxx.jpg
+   │     → URL : http://localhost:3001/uploads/xxxx.jpg
+   └─ enregistre la rental en BDD (colonne picture = cette URL)
+```
+
+| Élément | Rôle |
+|---------|------|
+| `FileStorageService` | Écrit le fichier sur le disque, génère un nom unique (UUID) |
+| `WebConfig` | Expose le dossier `uploads/` en URL `/uploads/**` |
+| `SecurityConfig` | Laisse `/uploads/**` **public** (sinon les `<img>` du front seraient bloqués) |
+| Dossier `uploads/` | Hors Git (`.gitignore`) |
+
+Formats acceptés en pratique : `.jpg`, `.png`, `.gif`, `.webp`… (pas de filtre MIME strict pour l’instant).  
+Taille max : **5 MB** (`spring.servlet.multipart` dans `application.properties`).
 
 ---
 
 ## Tester avec Postman
 
-### Register
+Astuce : après login/register, enregistre le token dans une variable d’environnement `{{token}}` (script post-response) et mets l’auth **Bearer Token** au niveau de la collection.
 
-- **POST** `http://localhost:3001/api/auth/register`
-- Body → raw → JSON :
+### Auth
+
+**Register** — `POST {{baseUrl}}/api/auth/register` (JSON) :
 
 ```json
 {
@@ -106,44 +150,45 @@ L’API écoute sur : **http://localhost:3001**
 }
 ```
 
-Réponse attendue : `200` + `{ "token": "..." }`
+**Login** — `POST {{baseUrl}}/api/auth/login` → `{ "token": "..." }`
 
-### Login
+**Me** — `GET {{baseUrl}}/api/auth/me` + Bearer → profil sans password.
 
-- **POST** `http://localhost:3001/api/auth/login`
+### Rentals
 
-```json
-{
-  "email": "test@test.com",
-  "password": "test!31"
-}
-```
+**Liste** — `GET {{baseUrl}}/api/rentals` + Bearer  
+→ `{ "rentals": [ ... ] }`
 
-### Me (profil connecté)
+**Détail** — `GET {{baseUrl}}/api/rentals/1` + Bearer
 
-- **GET** `http://localhost:3001/api/auth/me`
-- Header : `Authorization` = `Bearer <ton_token>`
+**Créer** — `POST {{baseUrl}}/api/rentals` + Bearer  
+Body → **form-data** (pas raw JSON) :
 
-Réponse attendue (sans password) :
+| Key | Type | Exemple |
+|-----|------|---------|
+| `name` | Text | Maison test |
+| `surface` | Text | 50 |
+| `price` | Text | 800 |
+| `description` | Text | Belle maison |
+| `picture` | **File** | une image |
 
-```json
-{
-  "id": 1,
-  "name": "Test TEST",
-  "email": "test@test.com",
-  "created_at": "2026-10-27T12:00:00",
-  "updated_at": "2026-10-27T12:00:00"
-}
-```
+Réponse : `{ "message": "Rental created !" }`
+
+Puis `GET /api/rentals` : la location apparaît avec une URL `picture`.  
+Ouvre l’URL dans le navigateur pour voir l’image.
+
+### User
+
+`GET {{baseUrl}}/api/user/1` + Bearer → même shape que `/auth/me`.
 
 ---
 
 ## Brancher le front Angular
 
-1. Lance **cette API** sur le port `3001`
-2. **Coupe Mockoon** (sinon conflit de port)
-3. Lance Angular (`ng serve`, port `4200`)
-4. Le proxy Angular envoie déjà les appels vers `localhost:3001`
+1. Lance cette API sur `:3001`
+2. **Coupe Mockoon**
+3. Lance Angular (`ng serve`, `:4200`)
+4. Le proxy Angular pointe déjà vers `localhost:3001`
 
 Pas besoin de modifier le front.
 
@@ -155,7 +200,7 @@ Pas besoin de modifier le front.
 |--------|------|
 | Java 21 | Langage |
 | Spring Boot 4 | Framework |
-| Spring Web | API HTTP REST |
+| Spring Web | API HTTP REST + multipart |
 | Spring Data JPA | Accès base de données |
 | MySQL | Base SQL |
 | Spring Security + JWT | Authentification |
@@ -163,185 +208,155 @@ Pas besoin de modifier le front.
 
 ---
 
-## Structure du projet (vue débutant)
+## Structure du projet
 
 ```text
 PROJET3_OCR_BACK/
-├── pom.xml                          # Dépendances Maven du projet
-├── mvnw / mvnw.cmd                  # Maven wrapper (lance Maven sans l’installer globalement)
-├── env.properties                   # Secrets locaux (HORS Git)
-├── .gitignore                       # Fichiers que Git ne doit pas versionner
-├── README.md                        # Ce fichier
+├── pom.xml
+├── mvnw / mvnw.cmd
+├── env.properties              # Secrets locaux (HORS Git)
+├── env.properties.example      # Modèle à copier
+├── uploads/                    # Images uploadées (HORS Git, créé au runtime)
+├── README.md
 │
-└── src/
-    ├── main/
-    │   ├── java/com/ocr/p3_back/
-    │   │   ├── P3BackApplication.java   # Point d’entrée : démarre Spring
-    │   │   ├── config/                  # Réglages globaux (sécurité…)
-    │   │   ├── controller/              # URLs HTTP (ce que Postman/Angular appellent)
-    │   │   ├── service/                 # Logique métier
-    │   │   ├── repository/              # Accès BDD (requêtes)
-    │   │   ├── entity/                  # Tables SQL en objets Java
-    │   │   ├── dto/                     # Forme des JSON entrants/sortants
-    │   │   ├── security/                # JWT (création + lecture du token)
-    │   │   └── exception/               # Traduction des erreurs en réponses HTTP
-    │   └── resources/
-    │       └── application.properties   # Config publique (port, liens vers env…)
-    └── test/                            # Tests automatisés (plus tard)
+└── src/main/
+    ├── java/com/ocr/p3_back/
+    │   ├── P3BackApplication.java
+    │   ├── config/             # SecurityConfig, WebConfig
+    │   ├── controller/         # Auth, Rental, User
+    │   ├── service/            # Auth, Rental, User, FileStorage
+    │   ├── repository/         # User, Rental
+    │   ├── entity/             # User, Rental
+    │   ├── dto/                # Request / Response JSON
+    │   ├── security/           # JwtService, JwtAuthenticationFilter
+    │   └── exception/          # GlobalExceptionHandler, ResourceNotFound…
+    └── resources/
+        └── application.properties
 ```
 
 ---
 
-## À quoi servent les dossiers Java ?
-
-Imagine une requête : *« Je veux m’inscrire »*.
+## À quoi servent les dossiers Java ? (débutant)
 
 ```text
 Angular / Postman
        ↓
-  controller/     ← reçoit la requête HTTP
+  controller/     ← URLs HTTP
        ↓
-  service/        ← décide quoi faire (hash password, créer user, générer token)
+  service/        ← logique métier (+ upload)
        ↓
-  repository/     ← parle à MySQL
+  repository/     ← MySQL
        ↓
-  entity/         ← représente une ligne de table (USERS)
+  entity/         ← tables SQL
 ```
 
-### `controller/` — la porte d’entrée HTTP
+### `controller/`
 
-Fichier actuel : `AuthController.java`
+| Fichier | Routes |
+|---------|--------|
+| `AuthController` | register, login, me |
+| `RentalController` | liste, détail, create (multipart) |
+| `UserController` | `GET /api/user/{id}` |
 
-- Définit les URLs : `/api/auth/register`, `/login`, `/me`
-- Reçoit le JSON, appelle le service, renvoie la réponse
-- **Ne contient pas** la logique métier complexe
-
-### `service/` — le cerveau métier
-
-Fichier actuel : `AuthService.java`
-
-- Register : vérifier l’email, hasher le mot de passe, sauver, créer un token
-- Login : vérifier email/password, créer un token
-- Me : retrouver l’utilisateur à partir de l’email du token
-
-### `repository/` — l’accès à la base
-
-Fichier actuel : `UserRepository.java`
-
-- Interface Spring Data JPA
-- Méthodes du type `findByEmail`, `existsByEmail`
-- Spring génère le SQL pour toi
-
-### `entity/` — le miroir d’une table SQL
-
-Fichier actuel : `User.java`
-
-- Correspond à la table `USERS`
-- Champs : id, name, email, password, dates…
-- **On ne renvoie pas** l’entité telle quelle au front (à cause du password)
-
-### `dto/` — les objets JSON pour le front
-
-DTO = *Data Transfer Object* = « objet de transfert ».
+### `service/`
 
 | Fichier | Rôle |
 |---------|------|
-| `RegisterRequest` | JSON reçu à l’inscription |
-| `LoginRequest` | JSON reçu au login |
-| `AuthResponse` | JSON renvoyé avec `{ "token": "..." }` |
-| `UserResponse` | JSON du profil `/me` (sans password) |
+| `AuthService` | inscription, connexion, profil `/me` |
+| `RentalService` | CRUD rentals (lecture + create) |
+| `UserService` | récupérer un user par id |
+| `FileStorageService` | sauvegarde des images sur le disque |
 
-Pourquoi ? Pour **ne pas exposer** l’entité BDD et coller exactement au contrat Angular / Mockoon (`created_at`, etc.).
+### `repository/` / `entity/`
 
-### `config/` — la configuration de l’appli
+- `User` / `UserRepository` → table `USERS`
+- `Rental` / `RentalRepository` → table `RENTALS`
 
-Fichier actuel : `SecurityConfig.java`
+Les entités ne sont **pas** renvoyées telles quelles au front (DTO à la place).
 
-- Active le hash **BCrypt** des mots de passe
-- Dit quelles routes sont **publiques** (`register`, `login`, Swagger plus tard)
-- Dit que le reste demande d’être **connecté** (JWT)
-- Branche le filtre JWT
-
-### `security/` — tout ce qui concerne le token JWT
+### `dto/`
 
 | Fichier | Rôle |
 |---------|------|
-| `JwtService` | Crée un token, le lit, vérifie s’il est encore valide |
-| `JwtAuthenticationFilter` | À chaque requête : lit le header `Authorization: Bearer ...`, vérifie le token, dit à Spring « cet utilisateur est connecté » |
+| `RegisterRequest` / `LoginRequest` | JSON entrants auth |
+| `AuthResponse` | `{ "token" }` |
+| `UserResponse` | profil (`created_at` / `updated_at` en snake_case) |
+| `RentalResponse` | une location |
+| `RentalsResponse` | wrapper `{ "rentals": [...] }` |
+| `ApiResponseMessage` | `{ "message": "..." }` (ex. create rental) |
 
-Sans le filtre, `/api/auth/me` resterait bloqué même avec un bon token.
+### `config/`
 
-### `exception/` — la gestion des erreurs HTTP
+| Fichier | Rôle |
+|---------|------|
+| `SecurityConfig` | BCrypt, routes publiques, JWT filter, `/uploads/**` public |
+| `WebConfig` | mappe `/uploads/**` → dossier local `uploads/` |
 
-Fichier actuel : `GlobalExceptionHandler.java`
+### `security/`
 
-Quand quelque chose se passe mal dans le service (mauvais mot de passe, champs manquants…), on « lance une exception ».  
-Ce fichier **écoute** ces exceptions et renvoie la bonne réponse au front :
+| Fichier | Rôle |
+|---------|------|
+| `JwtService` | crée / lit / valide le token |
+| `JwtAuthenticationFilter` | lit `Authorization: Bearer ...` à chaque requête |
 
-- champs invalides → `400` + `{}`
-- mauvais identifiants → `401` + `{ "message": "error" }`
+### `exception/`
 
-Comme ça, le controller reste simple.
-
-### `P3BackApplication.java`
-
-La classe avec `main` : c’est elle qui **démarre** tout Spring Boot.
-
-### `application.properties`
-
-Config versionnée sur Git :
-
-- port `3001`
-- import de `env.properties`
-- réglages JPA (`ddl-auto=validate` = les tables doivent déjà exister via le script SQL)
-
-Les mots de passe / secrets sont dans `env.properties`, pas ici.
+| Fichier | Rôle |
+|---------|------|
+| `GlobalExceptionHandler` | transforme les exceptions en 400 / 401 / 404 |
+| `ResourceNotFoundException` | ressource introuvable (rental, user…) |
 
 ---
 
-## Flux d’une connexion (pour bien visualiser)
+## Flux utiles
+
+### Connexion
 
 ```text
-1) POST /api/auth/login  { email, password }
-2) AuthService vérifie en BDD + BCrypt
-3) JwtService crée un token signé avec JWT_SECRET
-4) Réponse : { "token": "eyJ..." }
+POST /login → token
+GET /me + Bearer → profil
+```
 
-5) GET /api/auth/me
-   Header: Authorization: Bearer eyJ...
-6) JwtAuthenticationFilter valide le token → email connu
-7) AuthService charge l’utilisateur → UserResponse (sans password)
+### Création d’une location
+
+```text
+POST /api/rentals (multipart + Bearer)
+  → image dans uploads/
+  → ligne dans RENTALS (picture = URL)
+  → { "message": "Rental created !" }
+GET /api/rentals → la location apparaît
 ```
 
 ---
 
-## Sécurité – points importants
+## Sécurité
 
-- Les mots de passe sont stockés **hashés** (BCrypt), jamais en clair
-- Les secrets BDD / JWT sont dans `env.properties` (**jamais** commités)
-- Seuls `register` et `login` sont publics ; `/me` et le reste exigent un JWT
-- Ne jamais renvoyer le champ `password` dans un JSON
+- Mots de passe **BCrypt** en base
+- Secrets dans `env.properties` (hors Git)
+- JWT obligatoire sauf register / login / fichiers `/uploads/**`
+- `owner_id` à la création = utilisateur du token (pas une valeur client)
+- Jamais renvoyer `password` dans un JSON
 
 ---
 
-## Commandes Git utiles (rappel)
-
-```bash
-git status
-git add .
-git commit -m "message clair"
-git push
-```
-
-Vérifie toujours que `env.properties` n’apparaît **pas** dans les fichiers à committer.
-
-
-## Aide / dépannage rapide
+## Dépannage rapide
 
 | Problème | Piste |
 |----------|--------|
-| Erreur DataSource / URL | `env.properties` manquant ou mauvais `DB_*` |
-| Table / colonne incorrecte | Relancer `script.sql`, vérifier `ddl-auto=validate` |
-| `403` sur `/me` | Relancer l’API, refaire un login, header `Bearer <token>` correct |
-| Port 3001 déjà pris | Couper Mockoon ou l’autre process |
-| Angular ne voit pas l’API | API démarrée ? Mockoon arrêté ? Proxy vers `:3001` ? |
+| Erreur DataSource | `env.properties` / variables `DB_*` |
+| Schéma JPA | tables créées via `script.sql` ? `ddl-auto=validate` |
+| `403` sur routes protégées | Bearer manquant / `Bearer Bearer` / mauvais environnement Postman |
+| `POST is not supported` | relancer l’API après ajout du `@PostMapping` |
+| Image inaccessible | `/uploads/**` public ? `WebConfig` OK ? fichier bien dans `uploads/` ? |
+| Port 3001 pris | couper Mockoon |
+| Angular ne parle pas à l’API | API up ? Mockoon off ? proxy `:3001` ? |
+
+---
+
+## Prochaines étapes
+
+1. `PUT /api/rentals/{id}` (multipart sans picture, contrôle propriétaire)
+2. `POST /api/messages`
+3. CORS si besoin
+4. Swagger / springdoc (étape OCR suivante)
+5. Validation mentor

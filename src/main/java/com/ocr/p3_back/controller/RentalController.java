@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -49,4 +50,18 @@ public class RentalController {
                 rentalService.create(name, surface, price, picture, description, email)
         );
     }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponseMessage> update(
+            @PathVariable Integer id,
+            @RequestParam("name") String name,
+            @RequestParam("surface") String surface,
+            @RequestParam("price") String price,
+            @RequestParam("description") String description
+    ) {
+        return ResponseEntity.ok(
+                rentalService.update(id, name, surface, price, description)
+        );
+    }
+
 }

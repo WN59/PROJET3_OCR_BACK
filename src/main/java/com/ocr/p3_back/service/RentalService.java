@@ -78,6 +78,27 @@ public class RentalService {
         return new ApiResponseMessage("Rental created !");
     }
 
+     public ApiResponseMessage update(
+            Integer id,
+            String name,
+            String surface,
+            String price,
+            String description
+    ) {
+        Rental rental = rentalRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Rental not found"));
+
+        rental.setName(name);
+        rental.setSurface(new BigDecimal(surface));
+        rental.setPrice(new BigDecimal(price));
+        rental.setDescription(description);
+        rental.setUpdatedAt(LocalDateTime.now());
+        // ne pas toucher : picture, ownerId, createdAt
+
+        rentalRepository.save(rental);
+        return new ApiResponseMessage("Rental updated !");
+    }
+
     private RentalResponse toResponse(Rental rental) {
         return new RentalResponse(
                 rental.getId(),
