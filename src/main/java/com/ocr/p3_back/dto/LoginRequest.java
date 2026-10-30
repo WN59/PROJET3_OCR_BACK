@@ -3,6 +3,9 @@ package com.ocr.p3_back.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * Corps JSON de {@code POST /api/auth/login}.
+ */
 public class LoginRequest {
 
     @NotBlank

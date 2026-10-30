@@ -8,6 +8,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Column;
 import java.time.LocalDateTime;
 
+/**
+ * Entité JPA de la table {@code USERS}.
+ * Contient le mot de passe hashé — ne pas renvoyer tel quel au front (utiliser un DTO).
+ */
 @Entity
 @Table(name = "USERS")
 public class User {
@@ -34,6 +38,13 @@ public class User {
     public User() {
     }
 
+    /**
+     * Constructeur métier (inscription) : pose aussi les dates.
+     *
+     * @param name     nom affiché
+     * @param email    email unique
+     * @param password hash BCrypt (déjà encodé)
+     */
     public User(String name, String email, String password) {
         this.name = name;
         this.email = email;
