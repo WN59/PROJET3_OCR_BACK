@@ -1,0 +1,38 @@
+package com.ocr.p3_back.controller;
+
+import com.ocr.p3_back.dto.ApiResponseMessage;
+import com.ocr.p3_back.dto.MessageRequest;
+import com.ocr.p3_back.service.MessageService;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/messages")
+public class MessageController {
+
+    private final MessageService messageService;
+
+    public MessageController(MessageService messageService) {
+        this.messageService = messageService;
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponseMessage> create(
+            @Valid @RequestBody MessageRequest request,
+            Authentication authentication
+    ) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(
+                messageService.create(
+                        request.getRentalId(),
+                        request.getMessage(),
+                        email
+                )
+        );
+    }
+}
