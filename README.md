@@ -18,20 +18,15 @@ Elle remplace **Mockoon** pour parler avec le front **Angular** (locations / ren
 | `GET` | `/api/rentals` | Oui | — | `{ "rentals": [ ... ] }` |
 | `GET` | `/api/rentals/{id}` | Oui | — | un rental |
 | `POST` | `/api/rentals` | Oui | **multipart/form-data** + image | `{ "message": "Rental created !" }` |
+| `PUT` | `/api/rentals/{id}` | Oui | multipart **sans** `picture` | `{ "message": "Rental updated !" }` |
 | `GET` | `/api/user/{id}` | Oui | — | même forme que `/auth/me` |
-
-### Routes restantes (à venir)
-
-| Méthode | URL | Auth | Notes |
-|---------|-----|------|--------|
-| `PUT` | `/api/rentals/{id}` | Oui | multipart **sans** `picture` → `"Rental updated !"` |
-| `POST` | `/api/messages` | Oui | JSON `{ rental_id, user_id, message }` |
+| `POST` | `/api/messages` | Oui | JSON `{ rental_id, message }` | `{ "message": "Message send with success" }` |
 
 ### Accès public (sans JWT)
 
 - `/api/auth/register`, `/api/auth/login`
 - `/uploads/**` (fichiers images uploadés)
-- Swagger plus tard : `/swagger-ui/**`, `/v3/api-docs/**`
+- Documentation Swagger : `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**`
 
 ---
 
@@ -40,7 +35,7 @@ Elle remplace **Mockoon** pour parler avec le front **Angular** (locations / ren
 1. **JDK 21** (Java)
 2. **Maven** (ou le wrapper `mvnw` du projet)
 3. **MySQL** via **XAMPP** (ou équivalent)
-4. (Optionnel) **Postman** pour tester
+4. (Optionnel) **Postman** ou **Swagger UI** pour tester
 5. (Optionnel) Front Angular, port `4200`
 
 ---
@@ -102,6 +97,29 @@ mvnw.cmd spring-boot:run
 Tu dois voir : MySQL OK, `Tomcat started on port 3001`, `Started P3BackApplication`.
 
 API : **http://localhost:3001**
+
+---
+
+## Documentation Swagger (OpenAPI)
+
+L’API est documentée avec **springdoc-openapi** (Swagger UI).
+
+| Ressource | URL |
+|-----------|-----|
+| Interface Swagger | [http://localhost:3001/swagger-ui.html](http://localhost:3001/swagger-ui.html) |
+| Spec OpenAPI (JSON) | [http://localhost:3001/v3/api-docs](http://localhost:3001/v3/api-docs) |
+
+### Tester avec le JWT dans Swagger
+
+1. Ouvre Swagger UI  
+2. Utilise **POST `/api/auth/login`** (ou register) → copie le `token`  
+3. Clique sur **Authorize** (cadenas) → colle le token **sans** écrire `Bearer`  
+4. Teste les routes protégées (`/me`, rentals, messages…)
+
+Les endpoints publics (login / register) n’exigent pas d’auth dans l’UI.  
+Les controllers sont annotés (`@Tag`, `@Operation`, `@ApiResponse`) pour une doc lisible.
+
+Config associée : `OpenApiConfig` (titre API + schéma Bearer JWT).
 
 ---
 
@@ -283,14 +301,16 @@ Les entités ne sont **pas** renvoyées telles quelles au front (DTO à la place
 | `UserResponse` | profil (`created_at` / `updated_at` en snake_case) |
 | `RentalResponse` | une location |
 | `RentalsResponse` | wrapper `{ "rentals": [...] }` |
-| `ApiResponseMessage` | `{ "message": "..." }` (ex. create rental) |
+| `ApiResponseMessage` | `{ "message": "..." }` (ex. create rental / messages) |
+| `MessageRequest` | JSON entrant messages (`rental_id`, `message`) |
 
 ### `config/`
 
 | Fichier | Rôle |
 |---------|------|
-| `SecurityConfig` | BCrypt, routes publiques, JWT filter, `/uploads/**` public |
+| `SecurityConfig` | BCrypt, routes publiques, JWT filter, `/uploads/**` + Swagger publics |
 | `WebConfig` | mappe `/uploads/**` → dossier local `uploads/` |
+| `OpenApiConfig` | Swagger / OpenAPI : infos API + auth Bearer JWT |
 
 ### `security/`
 
@@ -333,7 +353,7 @@ GET /api/rentals → la location apparaît
 
 - Mots de passe **BCrypt** en base
 - Secrets dans `env.properties` (hors Git)
-- JWT obligatoire sauf register / login / fichiers `/uploads/**`
+- JWT obligatoire sauf register / login / fichiers `/uploads/**` / Swagger
 - `owner_id` à la création = utilisateur du token (pas une valeur client)
 - Jamais renvoyer `password` dans un JSON
 
@@ -345,7 +365,8 @@ GET /api/rentals → la location apparaît
 |----------|--------|
 | Erreur DataSource | `env.properties` / variables `DB_*` |
 | Schéma JPA | tables créées via `script.sql` ? `ddl-auto=validate` |
-| `403` sur routes protégées | Bearer manquant / `Bearer Bearer` / mauvais environnement Postman |
+| `403` sur routes protégées | Bearer manquant / `Bearer Bearer` / mauvais environnement Postman / Swagger non autorisé |
+| `403` sur Swagger UI | `SecurityConfig` : `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**` en `permitAll` ? |
 | `POST is not supported` | relancer l’API après ajout du `@PostMapping` |
 | Image inaccessible | `/uploads/**` public ? `WebConfig` OK ? fichier bien dans `uploads/` ? |
 | Port 3001 pris | couper Mockoon |
@@ -355,8 +376,6 @@ GET /api/rentals → la location apparaît
 
 ## Prochaines étapes
 
-1. `PUT /api/rentals/{id}` (multipart sans picture, contrôle propriétaire)
-2. `POST /api/messages`
-3. CORS si besoin
-4. Swagger / springdoc (étape OCR suivante)
-5. Validation mentor
+1. CORS si besoin (front hors proxy)
+2. Contrôle propriétaire sur `PUT /api/rentals/{id}` (bonus)
+3. Validation mentor / soutenance

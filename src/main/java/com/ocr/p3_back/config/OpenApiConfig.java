@@ -21,7 +21,14 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("ChaTop API")
-                        .description("API REST ChaTop — documentation interactive (Swagger)")
+                        .description("""
+                                API REST ChaTop (Spring Boot) — documentation interactive.
+
+                                Utilisation :
+                                1. Appeler POST /api/auth/login (ou register) pour obtenir un token
+                                2. Cliquer sur Authorize et coller le token (sans le mot Bearer)
+                                3. Tester les routes protégées
+                                """)
                         .version("1.0"))
                 .addSecurityItem(new SecurityRequirement().addList(schemeName))
                 .components(new Components()
