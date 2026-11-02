@@ -3,6 +3,7 @@ package com.ocr.p3_back.controller;
 import com.ocr.p3_back.dto.AuthResponse;
 import com.ocr.p3_back.dto.LoginRequest;
 import com.ocr.p3_back.dto.RegisterRequest;
+import com.ocr.p3_back.dto.UserResponse;
 import com.ocr.p3_back.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,13 +14,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.security.core.Authentication;
-import com.ocr.p3_back.dto.UserResponse;
 
 /**
  * Endpoints d'authentification : inscription, connexion et profil courant.
@@ -93,8 +93,7 @@ public class AuthController {
     })
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me(Authentication authentication) {
-        String email = authentication.getName(); // = email mis par le filtre
+        String email = authentication.getName();
         return ResponseEntity.ok(authService.me(email));
     }
-
 }
