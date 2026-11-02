@@ -91,7 +91,7 @@ public class AuthService {
     public UserResponse me(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("error"));
-    
+
         return new UserResponse(
                 user.getId(),
                 user.getName(),

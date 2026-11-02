@@ -10,13 +10,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class P3BackApplication {
 
-	/**
-	 * Démarre l'application Spring.
-	 *
-	 * @param args arguments de la ligne de commande
-	 */
-	public static void main(String[] args) {
-		SpringApplication.run(P3BackApplication.class, args);
-	}
+    /**
+     * Démarre l'application Spring.
+     *
+     * @param args arguments de la ligne de commande
+     */
+    public static void main(String[] args) {
+        SpringApplication.run(P3BackApplication.class, args);
+    }
 
 }

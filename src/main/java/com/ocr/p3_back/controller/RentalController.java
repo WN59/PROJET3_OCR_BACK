@@ -4,6 +4,13 @@ import com.ocr.p3_back.dto.RentalResponse;
 import com.ocr.p3_back.dto.RentalsResponse;
 import com.ocr.p3_back.dto.ApiResponseMessage;
 import com.ocr.p3_back.service.RentalService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -22,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @RestController
 @RequestMapping("/api/rentals")
+@Tag(name = "Locations", description = "Liste, détail, création et mise à jour des rentals (JWT requis)")
 public class RentalController {
 
     private final RentalService rentalService;
@@ -38,6 +46,12 @@ public class RentalController {
      *
      * @return wrapper {@code { "rentals": [...] }}
      */
+    @Operation(summary = "Liste des locations", description = "Renvoie toutes les locations au format { rentals: [...] }.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Liste des rentals",
+                    content = @Content(schema = @Schema(implementation = RentalsResponse.class))),
+            @ApiResponse(responseCode = "403", description = "JWT manquant ou invalide", content = @Content)
+    })
     @GetMapping
     public ResponseEntity<RentalsResponse> findAll() {
         return ResponseEntity.ok(rentalService.findAll());
@@ -49,8 +63,18 @@ public class RentalController {
      * @param id identifiant de la rental
      * @return la location, ou 404 si absente
      */
+    @Operation(summary = "Détail d'une location", description = "Renvoie une location par son identifiant.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Location trouvée",
+                    content = @Content(schema = @Schema(implementation = RentalResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Location introuvable", content = @Content),
+            @ApiResponse(responseCode = "403", description = "JWT manquant ou invalide", content = @Content)
+    })
     @GetMapping("/{id}")
-    public ResponseEntity<RentalResponse> findById(@PathVariable Integer id) {
+    public ResponseEntity<RentalResponse> findById(
+            @Parameter(description = "Identifiant de la location", required = true)
+            @PathVariable Integer id
+    ) {
         return ResponseEntity.ok(rentalService.findById(id));
     }
 
@@ -66,12 +90,28 @@ public class RentalController {
      * @param authentication utilisateur connecté
      * @return {@code { "message": "Rental created !" }}
      */
+    @Operation(
+            summary = "Créer une location",
+            description = "Création en multipart/form-data avec image. Le owner_id vient du JWT, pas du formulaire."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Location créée",
+                    content = @Content(schema = @Schema(implementation = ApiResponseMessage.class))),
+            @ApiResponse(responseCode = "403", description = "JWT manquant ou invalide", content = @Content)
+    })
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponseMessage> create(
+            @Parameter(description = "Nom de l'annonce", required = true)
             @RequestParam("name") String name,
+            @Parameter(description = "Surface", required = true)
             @RequestParam("surface") String surface,
+            @Parameter(description = "Prix", required = true)
             @RequestParam("price") String price,
+            @Parameter(description = "Image de la location", required = true,
+                    content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+                            schema = @Schema(type = "string", format = "binary")))
             @RequestParam("picture") MultipartFile picture,
+            @Parameter(description = "Description", required = true)
             @RequestParam("description") String description,
             Authentication authentication
     ) {
@@ -82,22 +122,49 @@ public class RentalController {
     }
 
     /**
-     * Met à jour une location (multipart, sans nouvelle image).
+     * Met à jour une location (multipart/form-data, même style que le POST).
+     * L'image existante est conservée : le champ {@code picture} est optionnel et ignoré
+     * (présent pour rester aligné sur le contrat FormData / l'UI Swagger du POST).
      *
      * @param id          identifiant de la rental
      * @param name        nouveau nom
      * @param surface     nouvelle surface
      * @param price       nouveau prix
      * @param description nouvelle description
+     * @param picture     non utilisé (optionnel)
      * @return {@code { "message": "Rental updated !" }}
      */
+    @Operation(
+            summary = "Mettre à jour une location",
+            description = """
+                    Mise à jour en multipart/form-data (même principe que la création).
+                    Ne pas envoyer d'image : le champ picture est optionnel et ignoré ;
+                    l'URL picture déjà en base est conservée (contrat front / Mockoon).
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Location mise à jour",
+                    content = @Content(schema = @Schema(implementation = ApiResponseMessage.class))),
+            @ApiResponse(responseCode = "404", description = "Location introuvable", content = @Content),
+            @ApiResponse(responseCode = "403", description = "JWT manquant ou invalide", content = @Content)
+    })
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponseMessage> update(
+            @Parameter(description = "Identifiant de la location", required = true)
             @PathVariable Integer id,
+            @Parameter(description = "Nom", required = true)
             @RequestParam("name") String name,
+            @Parameter(description = "Surface", required = true)
             @RequestParam("surface") String surface,
+            @Parameter(description = "Prix", required = true)
             @RequestParam("price") String price,
-            @RequestParam("description") String description
+            @Parameter(description = "Description", required = true)
+            @RequestParam("description") String description,
+            @Parameter(description = "Ignoré à l'update (gardé pour le même format multipart que le POST)",
+                    required = false,
+                    content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+                            schema = @Schema(type = "string", format = "binary")))
+            @RequestParam(value = "picture", required = false) MultipartFile picture
     ) {
         return ResponseEntity.ok(
                 rentalService.update(id, name, surface, price, description)
