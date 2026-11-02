@@ -122,18 +122,25 @@ public class RentalController {
     }
 
     /**
-     * Met à jour une location (multipart, sans nouvelle image).
+     * Met à jour une location (multipart/form-data, même style que le POST).
+     * L'image existante est conservée : le champ {@code picture} est optionnel et ignoré
+     * (présent pour rester aligné sur le contrat FormData / l'UI Swagger du POST).
      *
      * @param id          identifiant de la rental
      * @param name        nouveau nom
      * @param surface     nouvelle surface
      * @param price       nouveau prix
      * @param description nouvelle description
+     * @param picture     non utilisé (optionnel)
      * @return {@code { "message": "Rental updated !" }}
      */
     @Operation(
             summary = "Mettre à jour une location",
-            description = "Mise à jour multipart sans champ picture (l'image existante est conservée)."
+            description = """
+                    Mise à jour en multipart/form-data (même principe que la création).
+                    Ne pas envoyer d'image : le champ picture est optionnel et ignoré ;
+                    l'URL picture déjà en base est conservée (contrat front / Mockoon).
+                    """
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Location mise à jour",
@@ -152,7 +159,12 @@ public class RentalController {
             @Parameter(description = "Prix", required = true)
             @RequestParam("price") String price,
             @Parameter(description = "Description", required = true)
-            @RequestParam("description") String description
+            @RequestParam("description") String description,
+            @Parameter(description = "Ignoré à l'update (gardé pour le même format multipart que le POST)",
+                    required = false,
+                    content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+                            schema = @Schema(type = "string", format = "binary")))
+            @RequestParam(value = "picture", required = false) MultipartFile picture
     ) {
         return ResponseEntity.ok(
                 rentalService.update(id, name, surface, price, description)
